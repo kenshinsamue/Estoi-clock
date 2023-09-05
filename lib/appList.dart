@@ -4,6 +4,7 @@ import 'package:installed_apps/app_info.dart';
 import 'package:installed_apps/installed_apps.dart';
 
 class InstalledAppsScreen extends StatelessWidget {
+  // bool valueStatus = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,9 +28,10 @@ class InstalledAppsScreen extends StatelessWidget {
                   title: Text(app.name!),
                   subtitle: Text(app.packageName.toString()),
                   trailing: Checkbox(
-                    value: true,
+                    value: false,
                     onChanged: (value) {
-                      print(value);
+                      // valueStatus = value;
+                      // print(value);
                     },
                   ),
                   onTap: () =>
