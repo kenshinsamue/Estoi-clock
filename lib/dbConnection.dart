@@ -1,7 +1,4 @@
-
-
 import 'dart:core';
-
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -26,8 +23,9 @@ class Configurations{
 class DatabaseService {
   late Database _database;
   String database = "";
-
+  String initialDatabaseName = "";
   DatabaseService ({String? databaseName}){
+    initialDatabaseName = databaseName ?? "";
     database = databaseName ?? "";
     _initDatabase();
   }
@@ -62,6 +60,7 @@ class DatabaseService {
         'valor':'false'
       });
     }
+    database=initialDatabaseName;
   }
 
   /// Seleccciona todos los valores dentro de la tabla

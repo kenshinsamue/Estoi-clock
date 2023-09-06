@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:estoi_clock/appList.dart';
 import 'package:estoi_clock/configurationDB.dart';
 import 'package:estoi_clock/dbConnection.dart';
@@ -9,7 +7,6 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(MyApp());
 }
-
 
 class MyApp extends StatelessWidget {
   @override
@@ -50,7 +47,6 @@ class _MyHomePageState extends State<MyHomePage> {
         builder: (BuildContext context, AsyncSnapshot snapshot){
           if(snapshot.hasData){
             bool settingState = (snapshot.data[0]["valor"]=="true")?true:false;
-            // _isSwitched = settingState;
             return Scaffold(
               appBar: AppBar(
                 backgroundColor: Theme.of(context).primaryColor,
