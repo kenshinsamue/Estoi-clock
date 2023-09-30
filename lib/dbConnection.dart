@@ -1,6 +1,7 @@
 import 'dart:core';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart'; // Importa sqflite_common_ffi si lo estás utilizando
 
 class BannedApps{
   final int id;
@@ -27,10 +28,10 @@ class DatabaseService {
   DatabaseService ({String? databaseName}){
     initialDatabaseName = databaseName ?? "";
     database = databaseName ?? "";
-    _initDatabase();
   }
-  Future<void> _initDatabase() async {
-    _database = await openDatabase(
+
+   Future<void> initDatabase() async {
+     _database = await openDatabase(
       join(await getDatabasesPath(),'stoiclock.db'),
       onCreate: (db,version) async  {
          await db.execute(
@@ -52,12 +53,12 @@ class DatabaseService {
       },
       version: 1
     );
-    database="configurations";
+    database="bannedApps";
     dynamic result = await  selectAll();
     if(result.toString()=="[]"){
       await insertData({
-        'configurations':'habilitado',
-        'valor':'false'
+        'name':'YouTube',
+        'package':'com.google.android.youtube'
       });
     }
     database=initialDatabaseName;
@@ -69,8 +70,8 @@ class DatabaseService {
   }
 
   /// Selecciona bajo una condicion
-  Future<List<Map<String, Object?>>> selectWhere(String condition) async {
-    return await _database.query(database,where: condition);
+  Future<List<Map<String, Object?>>> selectWhere({List<String>? columns,String? condition}) async {
+    return await _database.query(database,where: condition,columns: columns);
   }
   /// Inserta los datos dentro de la tabla
   Future<int> insertData(Map <String,Object> values) async {

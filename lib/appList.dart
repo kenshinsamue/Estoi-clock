@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:installed_apps/app_info.dart';
 import 'package:installed_apps/installed_apps.dart';
-import 'AppsPackagesDB.dart';
 
 
 class InstalledAppsScreen extends StatefulWidget {
@@ -15,19 +14,23 @@ class _InstalledAppsScreenState extends State<InstalledAppsScreen> {
   late DatabaseService _blackList ;
 
   _InstalledAppsScreenState(){
-    _blackList = AppsPackages();
+    _blackList = DatabaseService(databaseName: "bannedApps");
+    _blackList.initDatabase();
+
   }
 
   @override
   void initState() {
     super.initState();
-    _blackList = AppsPackages();
+    _blackList = DatabaseService(databaseName: "bannedApps");
+    _blackList.initDatabase();
+
   }
   Future<List<Map<String, dynamic>>> checkStatus () async {
     List<AppInfo> appsList = await InstalledApps.getInstalledApps(true, true);
     List<Map<String, dynamic>> result = [];
     for (var app in appsList) {
-      dynamic query = await _blackList.selectWhere('package = "${app.packageName}"');
+      dynamic query = await _blackList.selectWhere(condition:  'package = "${app.packageName}"');
       bool valueStatus = query.toString() != "[]";
       result.add({
         "appInfo": app,

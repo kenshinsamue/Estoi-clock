@@ -1,19 +1,24 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:isolate';
 import 'dart:ui';
 import 'package:estoi_clock/appList.dart';
-import 'package:estoi_clock/configurationDB.dart';
 import 'package:estoi_clock/dbConnection.dart';
 import 'package:estoi_clock/notificationService.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:usage_stats/usage_stats.dart';
+
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initNotifications();
-  runApp(MyApp());
 
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -38,26 +43,49 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  DatabaseService _appSettings = AppConfiguration();
+  DatabaseService _blackList = DatabaseService(databaseName: "bannedApps");
+  final fetchBackground = "fetchBackground";
+  MethodChannel platform = const MethodChannel('background');
   final ReceivePort  receivePort = ReceivePort();
   late Isolate isolate;
   Capability? capability;
   int result = 0;
   late dynamic status;
   bool settingState = false;
+
   @override
   void initState() {
     super.initState();
+    UsageStats.grantUsagePermission();
+
   }
 
   _MyHomePageState(){
-    _appSettings = AppConfiguration();
+    _blackList = DatabaseService(databaseName: "bannedApps");
+    _blackList.initDatabase();
   }
 
   Future init() async {
     status =  Permission.notification.request();
-    dynamic result = await _appSettings.selectWhere("configurations = 'habilitado'");
-    return result;
+    UsageStats.grantUsagePermission();
+  }
+
+  startService() async{
+    DatabaseService bannedApps = DatabaseService(databaseName: "bannedApps");
+    await bannedApps.initDatabase();
+    List<Map<String, Object?>> appBlackList = await bannedApps.selectAll();
+    List<String> packagesBanned = [];
+    for (var element in appBlackList) {
+      dynamic jsonFixed = element.toString().replaceAllMapped(RegExp(r'([a-zA-Z0-9.]+)'), (match) {
+        return '"${match.group(0)}"';
+      });
+      Map<String, dynamic> object =  jsonDecode(jsonFixed);
+      if(object["package"] != null){
+        String name = object["package"]!;
+        packagesBanned.add(name);
+      }
+    }
+    await platform.invokeListMethod('startService',{'bannedApps':packagesBanned});
   }
   @override
   Widget build(BuildContext context) {
@@ -82,29 +110,22 @@ class _MyHomePageState extends State<MyHomePage> {
                     Switch(
                       value:settingState,
                       onChanged: (value) async  {
-
                         if(mounted){
                           hideNotification();
-                          isolate = await isolateFunc(receivePort);
-
                           if(value == false){
-                            if(capability == null) {
-                              capability = isolate.pause(isolate.pauseCapability);
-                            } else {
-                              capability = isolate.pause(capability);
-                            }
+                            hideNotification();
                           }
                           if (value == true){
-                            if(capability != null) {
-                              isolate.resume(capability!);
-                            }
-                            else{
-                              isolate = await isolateFunc(receivePort);
-                            }
                             showNotification();
                           }
-                          setState(() {
+                          setState(()  {
                             settingState = value;
+                            if(settingState) {
+                              startService();
+                            }
+                            else{
+                              platform.invokeListMethod('stopService');
+                            }
                           });
                         }
                       },
@@ -131,99 +152,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ],
           ),
         ) //
-
-        // FutureBuilder(
-        //   future: init(),
-        //   initialData: const [{"id": 1, "configurations": "habilitado", "valor": false,"default":true}],
-        //   builder: (BuildContext context, AsyncSnapshot snapshot){
-        //       print (snapshot.data);
-        //       if(snapshot.connectionState == ConnectionState.done ){
-        //         print (snapshot.data);
-        //         bool settingState = (snapshot.data[0]["valor"]=="true")?true:false;
-        //         if(settingState){
-        //           showNotification();
-        //         }
-        //         return Center(
-        //             child: Column(
-        //               mainAxisAlignment: MainAxisAlignment.start,
-        //               children: [
-        //                 Padding(
-        //                   padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
-        //                   child: Row(
-        //                     children: [
-        //                       SizedBox(
-        //                         width: MediaQuery.of(context).size.width * 0.75,
-        //                         child: const Text("Habilitar EstoiClock para que me ayude a gestionar mi tiempo"),
-        //                       ),
-        //
-        //                       Switch(
-        //                         value:settingState,
-        //                         onChanged: (value) async  {
-        //
-        //                           if(mounted){
-        //                             hideNotification();
-        //                             isolate = await isolateFunc(receivePort);
-        //
-        //                             if(value == false){
-        //                               if(capability == null) {
-        //                                 capability = isolate.pause(isolate.pauseCapability);
-        //                               } else {
-        //                                 capability = isolate.pause(capability);
-        //                               }
-        //                             }
-        //                             if (value == true){
-        //                               if(capability != null) {
-        //                                 isolate.resume(capability!);
-        //                               }
-        //                               else{
-        //                                 isolate = await isolateFunc(receivePort);
-        //                               }
-        //                               showNotification();
-        //                             }
-        //                             setState(() {
-        //                               settingState = value;
-        //                             });
-        //                           }
-        //                         },
-        //                       ),
-        //                     ],
-        //                   ),
-        //                 ),
-        //                 Card(
-        //                   child: Padding(
-        //                     padding: const EdgeInsets.all(8),
-        //                     child: ListTile(
-        //                       title: const Text("Aplicaciones Instaladas"),
-        //                       subtitle:const  Text(
-        //                           "Seleccione las aplicaciones que van a ser monitorizadas"),
-        //                       onTap: () => Navigator.push(
-        //                         context,
-        //                         MaterialPageRoute(
-        //                           builder: (context) => InstalledAppsScreen(),
-        //                         ),
-        //                       ),
-        //                     ),
-        //                   ),
-        //                 ),
-        //               ],
-        //             ),
-        //           ); // This trailing comma makes auto-formatting nicer for build methods.
-        //       }
-        //
-        //       else{
-        //         return CircularProgressIndicator();
-        //       }
-        //     }
-        // )
     );
   }
 }
-
-  isolateFunc (ReceivePort port) async {
-    return  await Isolate.spawn(runTask,port.sendPort);
-  }
-
-  int runTask(SendPort arg){
-    SendPort resultPort = arg;
-    Isolate.exit(resultPort,1);
-  }
